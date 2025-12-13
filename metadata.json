@@ -1,0 +1,8 @@
+{
+  "name": "NursingSkill Pro",
+  "description": "A self-practice application for undergraduate nursing students to master core nursing skills like Vital Signs, featuring gamification, video recording, and self-evaluation.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
