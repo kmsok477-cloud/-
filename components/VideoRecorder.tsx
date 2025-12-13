@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Camera, StopCircle, Play, Save, RefreshCw, ArrowLeft, Activity, Stethoscope, Wind, Droplets, Book, ChevronRight, CheckCircle2, Circle } from 'lucide-react';
+import { Camera, StopCircle, Play, Save, RefreshCw, ArrowLeft, Activity, Stethoscope, Wind, Droplets, Book, ChevronRight, CheckCircle2, Circle, CameraOff, Mic } from 'lucide-react';
 import { SKILLS_LIST } from '../constants';
 import { NursingSkill } from '../types';
 
@@ -11,6 +11,7 @@ const VideoRecorder: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [isCameraActive, setIsCameraActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Cleanup URLs on unmount
@@ -31,15 +32,17 @@ const VideoRecorder: React.FC = () => {
   }, [selectedSkill]);
 
   const startCamera = async () => {
+    setError(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        setIsCameraActive(true);
       }
-      setError(null);
     } catch (err) {
       console.error(err);
-      setError("카메라에 접근할 수 없습니다. 권한을 확인해주세요.");
+      setError("카메라 및 마이크 권한이 필요합니다. 브라우저 설정에서 허용해주세요.");
+      setIsCameraActive(false);
     }
   };
 
@@ -49,13 +52,13 @@ const VideoRecorder: React.FC = () => {
       stream.getTracks().forEach(track => track.stop());
       videoRef.current.srcObject = null;
     }
+    setIsCameraActive(false);
   };
 
-  // Manage camera lifecycle based on view state
+  // Manage camera lifecycle
   useEffect(() => {
-    if (selectedSkill && !recordings[selectedSkill.id]) {
-      startCamera();
-    } else {
+    // If a recording exists, or we leave the skill, make sure camera is stopped
+    if (selectedSkill && recordings[selectedSkill.id]) {
       stopCamera();
     }
     return () => stopCamera();
@@ -66,6 +69,7 @@ const VideoRecorder: React.FC = () => {
       await startCamera();
     }
     
+    // Check again if stream is active (in case startCamera failed)
     setTimeout(() => {
         if (!videoRef.current?.srcObject) return;
 
@@ -119,6 +123,9 @@ const VideoRecorder: React.FC = () => {
         ...prev,
         [selectedSkill.id]: new Set()
       }));
+      
+      // Reset state so user can start camera again manually
+      setIsCameraActive(false);
     }
   };
 
@@ -229,15 +236,16 @@ const VideoRecorder: React.FC = () => {
         
         {/* Left/Top: Video Area */}
         <div className={`relative flex flex-col ${hasRecording ? 'md:w-1/2 h-1/2 md:h-full' : 'w-full h-full'}`}>
-          <div className="flex-1 bg-black flex items-center justify-center relative overflow-hidden">
+          <div className="flex-1 bg-black flex items-center justify-center relative overflow-hidden group">
             {error ? (
-              <div className="text-white text-center p-6">
-                <p className="mb-4 text-red-400">{error}</p>
+              <div className="text-white text-center p-6 max-w-xs">
+                <CameraOff size={48} className="mx-auto mb-4 text-gray-500" />
+                <p className="mb-4 text-red-400 text-sm">{error}</p>
                 <button 
                   onClick={startCamera}
-                  className="px-4 py-2 bg-gray-700 rounded hover:bg-gray-600"
+                  className="px-4 py-2 bg-gray-700 rounded hover:bg-gray-600 text-sm"
                 >
-                  다시 시도
+                  권한 재요청
                 </button>
               </div>
             ) : hasRecording ? (
@@ -247,13 +255,28 @@ const VideoRecorder: React.FC = () => {
                 className="w-full h-full object-contain"
               />
             ) : (
-              <video
-                ref={videoRef}
-                autoPlay
-                muted
-                playsInline
-                className="w-full h-full object-cover transform scale-x-[-1]"
-              />
+              <>
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  className={`w-full h-full object-cover transform scale-x-[-1] ${!isCameraActive ? 'hidden' : ''}`}
+                />
+                {!isCameraActive && (
+                  <div className="text-center">
+                    <button
+                      onClick={startCamera}
+                      className="flex flex-col items-center gap-3 text-gray-400 hover:text-white transition"
+                    >
+                      <div className="p-4 rounded-full bg-gray-800 hover:bg-gray-700 transition">
+                        <Camera size={32} />
+                      </div>
+                      <span className="text-sm font-medium">카메라 켜기</span>
+                    </button>
+                  </div>
+                )}
+              </>
             )}
             
             {isRecording && (
@@ -280,12 +303,13 @@ const VideoRecorder: React.FC = () => {
                 ) : (
                   <button
                     onClick={startRecording}
-                    className="flex flex-col items-center gap-2 group"
+                    disabled={!isCameraActive && !error} 
+                    className={`flex flex-col items-center gap-2 group ${!isCameraActive ? 'opacity-50' : 'opacity-100'}`}
                   >
-                     <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center border-4 border-white group-hover:bg-red-700 transition">
-                        <div className="w-4 h-4 bg-white rounded-full"></div>
+                     <div className={`w-16 h-16 bg-red-600 rounded-full flex items-center justify-center border-4 border-white ${isCameraActive ? 'group-hover:bg-red-700' : ''} transition`}>
+                        {isCameraActive ? <div className="w-4 h-4 bg-white rounded-full"></div> : <Camera size={24} className="text-white" />}
                      </div>
-                     <span className="text-white text-xs">촬영 시작</span>
+                     <span className="text-white text-xs">{isCameraActive ? '촬영 시작' : '카메라 대기'}</span>
                   </button>
                 )}
             </div>
