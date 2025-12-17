@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { TrendingUp, Award, Calendar, AlertCircle } from 'lucide-react';
+import { TrendingUp, Award, Calendar, AlertCircle, Download } from 'lucide-react';
 import { AssessmentRecord } from '../types';
+import * as XLSX from 'xlsx';
 
 const Dashboard: React.FC = () => {
   const [history, setHistory] = useState<AssessmentRecord[]>([]);
@@ -67,6 +68,58 @@ const Dashboard: React.FC = () => {
     }
   }, []);
 
+  const handleExportExcel = () => {
+    if (history.length === 0) {
+      alert('내보낼 데이터가 없습니다.');
+      return;
+    }
+
+    // Prepare data for Excel
+    const excelData = history.map((record, index) => {
+        const dateObj = new Date(record.date);
+        
+        let typeName = '기타';
+        if (record.type === 'SELF_CHECK') typeName = '자가평가';
+        else if (record.type === 'GAME_ITEM') typeName = '물품게임';
+        else if (record.type === 'GAME_ORDER') typeName = '순서게임';
+
+        return {
+            'No.': index + 1,
+            '날짜': dateObj.toLocaleDateString(),
+            '시간': dateObj.toLocaleTimeString(),
+            '구분': typeName,
+            '술기명': record.skillTitle,
+            '점수': record.score,
+            '결과': record.passed ? '통과' : '미달'
+        };
+    });
+
+    // Create workbook and worksheet
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    const workbook = XLSX.utils.book_new();
+    
+    // Auto-adjust column width (approximate)
+    const wscols = [
+        { wch: 6 },  // No
+        { wch: 12 }, // Date
+        { wch: 10 }, // Time
+        { wch: 10 }, // Type
+        { wch: 25 }, // Skill Title
+        { wch: 8 },  // Score
+        { wch: 8 }   // Result
+    ];
+    worksheet['!cols'] = wscols;
+
+    XLSX.utils.book_append_sheet(workbook, worksheet, "학습이력");
+
+    // Generate file name with current timestamp
+    const today = new Date();
+    const fileName = `NursingSkill_Report_${today.getFullYear()}${(today.getMonth()+1).toString().padStart(2,'0')}${today.getDate().toString().padStart(2,'0')}.xlsx`;
+
+    // Download
+    XLSX.writeFile(workbook, fileName);
+  };
+
   if (history.length === 0) {
     return (
       <div className="h-full flex flex-col items-center justify-center text-center p-8 bg-white rounded-xl shadow-sm border border-gray-100">
@@ -84,6 +137,17 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="h-full overflow-y-auto space-y-6">
+      <div className="flex justify-between items-center">
+          <h2 className="text-xl font-bold text-gray-800">학습 대시보드</h2>
+          <button 
+            onClick={handleExportExcel}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition shadow-sm font-medium text-sm"
+          >
+            <Download size={16} />
+            엑셀로 내보내기
+          </button>
+      </div>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">

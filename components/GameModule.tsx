@@ -250,7 +250,10 @@ const GameModule: React.FC = () => {
           <p className="text-gray-600 mb-6">점수: <span className="font-bold text-xl">{score}점</span></p>
           <div className="flex gap-3 justify-center">
             <button 
-              onClick={() => setGameType('MENU')}
+              onClick={() => {
+                setGameType('MENU');
+                setGameState('PLAYING');
+              }}
               className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
             >
               메뉴로

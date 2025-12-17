@@ -17,7 +17,7 @@ const VideoRecorder: React.FC = () => {
   // Cleanup URLs on unmount
   useEffect(() => {
     return () => {
-      Object.values(recordings).forEach(url => URL.revokeObjectURL(url));
+      Object.values(recordings).forEach((url) => URL.revokeObjectURL(url as string));
     };
   }, []);
 
